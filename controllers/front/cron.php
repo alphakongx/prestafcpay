@@ -17,6 +17,7 @@ class TaFcfPayCronModuleFrontController extends ModuleFrontController
 {
     public function postProcess()
     {
+
         $result = [];
         $db = Db::getInstance();
         $tafcfpay = Module::getInstanceByName('tafcfpay');
