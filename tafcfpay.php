@@ -529,7 +529,7 @@ class TaFcfPay extends PaymentModule
             fwrite($fp, $logLine);
             fclose($fp);
         }catch (Exception $e){
-
+          print_r($e->getMessage());die;
         }
 
     }
