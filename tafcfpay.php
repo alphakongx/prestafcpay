@@ -203,6 +203,16 @@ class TaFcfPay extends PaymentModule
                     'col' => 6,
                     'type' => 'text',
                     'required' => true,
+                    'readonly' => true,
+                    'label' => $this->l('Cron Url to sync unpaid orders'),
+                    'hint' => $this->l('Set this cron url at your server and set the time to run . For example: every hour'),
+                    'name' => 'TAFCFPAY_CRON_URL',
+                    'desc' => $this->l('Set this cron url at your server and set the time to run . For example: every hour'),
+                ),
+                array(
+                    'col' => 6,
+                    'type' => 'text',
+                    'required' => true,
                     'label' => $this->l('Api Key'),
                     'hint' => $this->l('Api Key'),
                     'name' => 'TAFCFPAY_API_KEY',
@@ -296,12 +306,14 @@ class TaFcfPay extends PaymentModule
 
     public function getFormValues()
     {
-        $callback = Context::getContext()->shop->getBaseURL(true) . 'modules/tafcfpay/callback.php';
+        $callback = Context::getContext()->shop->getBaseURL(true) . 'module/tafcfpay/callback';
+        $cron = Context::getContext()->shop->getBaseURL(true) . 'module/tafcfpay/cron';
         return array(
             'TAFCFPAY_MODE' => Configuration::get('TAFCFPAY_MODE') ?
                 Configuration::get('TAFCFPAY_MODE') : 'staging',
-            'TAFCFPAY_CALLBACK_URL' => Configuration::get('TAFCFPAY_CALLBACK_URL') ?
-                Configuration::get('TAFCFPAY_CALLBACK_URL') : $callback,
+            'TAFCFPAY_CALLBACK_URL' => $callback,
+            'TAFCFPAY_CRON_URL' => Configuration::get('TAFCFPAY_CRON_URL') ?
+                Configuration::get('TAFCFPAY_CRON_URL') : $cron,
             'TAFCFPAY_API_KEY' => Configuration::get('TAFCFPAY_API_KEY') ?
                 Configuration::get('TAFCFPAY_API_KEY') : '',
             'TAFCFPAY_INITIAL_STATUS' => Configuration::get('TAFCFPAY_INITIAL_STATUS') ?
@@ -462,4 +474,64 @@ class TaFcfPay extends PaymentModule
     {
         return Db::getInstance()->execute("DROP TABLE IF EXISTS `"._DB_PREFIX_."tafcfpay_orders`");
     }
+
+    public function changeStatus($id_order, $id_order_state)
+    {
+        try {
+            $order = new Order($id_order);
+            $order_state = new OrderState($id_order_state);
+            $history = new OrderHistory();
+            $history->id_order = $id_order;
+            $use_existings_payment = !$order->hasInvoice();
+            $history->changeIdOrderState((int)$order_state->id, (int)$id_order, $use_existings_payment);
+            $history->add(true);
+        } catch (\Exception $e) {
+            $error[] = $e->getMessage();
+        }
+    }
+
+    public function sendApiRequest($data = [],$endpoint = 'create-order',$type = 'POST')
+    {
+        $mode = Configuration::get('TAFCFPAY_MODE');
+        $api_key = Configuration::get('TAFCFPAY_API_KEY');
+        if ($mode == 'live') {
+            $endpoint = 'https://merchant.fcfpay.com/api/v1/'.$endpoint;
+        } else {
+            $endpoint = 'https://sandbox.fcfpay.com/api/v1/'.$endpoint;
+        }
+
+        $curl = curl_init($endpoint);
+
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_HTTPHEADER,
+            array("Authorization: Bearer $api_key",
+                'Content-Type:application/json'
+            )
+        );
+        $ch = curl_exec($curl);
+        curl_close($curl);
+
+        $response = json_decode($ch, true);
+        return $response;
+    }
+    public function log($data) {
+
+        $logLine = chr(10) . date('d/m/Y h:i:s A') . ' - ' . json_encode($data);
+        $outputDir = _PS_MODULE_DIR_ . 'tafcfpay/logs/';
+        if(!is_dir($outputDir)){
+            mkdir($outputDir,0777,true);
+        }
+        try{
+            $outputFile = _PS_MODULE_DIR_ . 'tafcfpay/logs/logs.log';
+            $fp = fopen($outputFile, 'a');
+            fwrite($fp, $logLine);
+            fclose($fp);
+        }catch (Exception $e){
+
+        }
+
+    }
+
 }
