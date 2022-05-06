@@ -160,7 +160,7 @@ class TaFcfPay extends PaymentModule
         $modes = array(
           array(
               'value' => 'staging',
-              'label' => 'Test Mode',
+              'label' => 'Sandbox(Test) Mode',
           ),
           array(
               'value' => 'live',
@@ -188,6 +188,16 @@ class TaFcfPay extends PaymentModule
                         'id' => 'value',
                         'name' => 'label',
                     )
+                ),
+                array(
+                    'col' => 6,
+                    'type' => 'text',
+                    'required' => true,
+                    'readonly' => true,
+                    'label' => $this->l('Callback Url'),
+                    'hint' => $this->l('Set this url while creating project on https://merchant.fcfpay.com/admin/projects/'),
+                    'name' => 'TAFCFPAY_CALLBACK_URL',
+                    'desc' => $this->l('Set this url while creating project on https://merchant.fcfpay.com/admin/projects/'),
                 ),
                 array(
                     'col' => 6,
@@ -286,9 +296,12 @@ class TaFcfPay extends PaymentModule
 
     public function getFormValues()
     {
+        $callback = Context::getContext()->shop->getBaseURL(true) . 'modules/tafcfpay/callback.php';
         return array(
             'TAFCFPAY_MODE' => Configuration::get('TAFCFPAY_MODE') ?
                 Configuration::get('TAFCFPAY_MODE') : 'staging',
+            'TAFCFPAY_CALLBACK_URL' => Configuration::get('TAFCFPAY_CALLBACK_URL') ?
+                Configuration::get('TAFCFPAY_CALLBACK_URL') : $callback,
             'TAFCFPAY_API_KEY' => Configuration::get('TAFCFPAY_API_KEY') ?
                 Configuration::get('TAFCFPAY_API_KEY') : '',
             'TAFCFPAY_INITIAL_STATUS' => Configuration::get('TAFCFPAY_INITIAL_STATUS') ?
@@ -329,11 +342,10 @@ class TaFcfPay extends PaymentModule
                     $payOption->setCallToActionText($call_to_action_text)
                         ->setModuleName('tafcfpay')
                         ->setLogo('https://checkout-sandbox.fcfpay.com/img/logo.svg')
-//                        ->setAction($this->context->link->getModuleLink($this->name,
-// 'validation', array('id_plan' => $plan['id_plan']), true))
+                        ->setAction($this->context->link->getModuleLink($this->name, 'validation', [], true))
 //                        ->setAdditionalInformation($this->context->smarty->fetch($this->_path .
 // 'views/templates/front/additional_information.tpl'))
-                        ->setForm($this->generatePaymentForm())
+//                        ->setForm($this->generatePaymentForm())
                     ;
 
                     $payment_options[] = $payOption;
@@ -413,11 +425,11 @@ class TaFcfPay extends PaymentModule
             $this->clearTableCart();
         }
 
-        if (version_compare(_PS_VERSION_, '1.7', '>=')) {
-            $this->context->controller->addJS(($this->_path) . 'views/js/front/front.js');
-        } else {
-            $this->context->controller->addJS(($this->_path) . 'views/js/front/front16.js');
-        }
+//        if (version_compare(_PS_VERSION_, '1.7', '>=')) {
+//            $this->context->controller->addJS(($this->_path) . 'views/js/front/front.js');
+//        } else {
+//            $this->context->controller->addJS(($this->_path) . 'views/js/front/front16.js');
+//        }
     }
 
     private function clearTableCart()

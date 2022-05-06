@@ -14,16 +14,15 @@ class TaFcfPayCalculateModuleFrontController extends ModuleFrontController
 {
     public $ssl = true;
 
-    public function __construct()
+    public function postProcess()
     {
-
-        parent::__construct();
         global $kernel;
         if(!$kernel){
             require_once _PS_ROOT_DIR_.'/app/AppKernel.php';
             $kernel = new \AppKernel('prod', false);
             $kernel->boot();
         }
+
         try{
             if (Tools::getIsset('orderButtonClick') && Tools::getValue('orderButtonClick')) {
 
@@ -33,7 +32,10 @@ class TaFcfPayCalculateModuleFrontController extends ModuleFrontController
                 $cart = new Cart($id_cart);
                 $this->context->cart = $cart;
                 $storeCurrency = new Currency($cart->id_currency);
-                Context::getContext()->currency = $storeCurrency;
+                $context = Context::getContext();
+                var_dump($context->employee);die;
+                $context->currency = $storeCurrency;
+//                $context->employee = $cart->;
                 $currency_code = $storeCurrency->iso_code;
                 $currency_code_numeric = $storeCurrency->iso_code_num;
                 $os = Configuration::get('TAFCFPAY_INITIAL_STATUS');
@@ -41,8 +43,10 @@ class TaFcfPayCalculateModuleFrontController extends ModuleFrontController
                 $update_date = date('Y-m-d');
                 $mailVars =    array();
                 $total = (int)$cart->getOrderTotal();
-                $this->module->validateOrder((int)$this->context->cart->id, $os, $total, $displayName, null, $mailVars, (int)$storeCurrency->id, false, $this->context->customer->secure_key);
-                $order = new Order($this->module->currentOrder);
+                $tafcfpay = Module::getInstanceByName('tafcfpay');
+
+                $tafcfpay->validateOrder((int)$this->context->cart->id, $os, $total, $displayName, null, $mailVars, (int)$storeCurrency->id, false, $this->context->customer->secure_key);
+                $order = new Order($tafcfpay->currentOrder);
                 $total = $order->getTotalPaid();
                 if(!empty($order->reference)) {
                     $domain = $this->context->shop->getBaseURL(true);
@@ -98,7 +102,8 @@ class TaFcfPayCalculateModuleFrontController extends ModuleFrontController
                 }
             }
         } catch (\Exception $e) {
-            die(json_encode(array('success' => false, 'message' => $e->getMessage())));
+
+            die(json_encode(array('success' => false, 'message' => $e->getMessage(),'d' => $e->getTraceAsString())));
         }
 
     }
